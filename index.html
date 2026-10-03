@@ -1,147 +1,88 @@
 <!doctype html>
 <html lang="pt-PT">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>Esfera de Mérito — Renault Master 3D</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Esfera de Mérito — Renault Master L2H2 3D</title>
 <style>
-html,body{margin:0;height:100%;overflow:hidden;background:#eef1f4;font-family:Arial,sans-serif}
-#info{position:fixed;z-index:5;left:14px;top:14px;background:rgba(255,255,255,.94);border-radius:14px;padding:10px 13px;box-shadow:0 6px 24px rgba(0,0,0,.12);font-size:13px}
-#info b{display:block;font-size:15px;margin-bottom:3px}#info span{color:#666}
-#help{position:fixed;z-index:5;right:14px;bottom:14px;background:rgba(0,0,0,.68);color:#fff;border-radius:12px;padding:8px 10px;font-size:12px}
-canvas{display:block}
+html,body{margin:0;height:100%;overflow:hidden;background:#e9ecef;font-family:Inter,Arial,sans-serif}canvas{display:block}
+#panel{position:fixed;z-index:10;left:16px;top:16px;max-width:320px;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:14px 16px;box-shadow:0 10px 35px rgba(0,0,0,.14)}
+#panel b{display:block;font-size:16px;color:#111;margin-bottom:3px}#panel small{color:#62676c;line-height:1.45}
+.actions{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}.actions button{border:0;border-radius:11px;padding:9px 12px;background:#151515;color:#fff;font-weight:700;cursor:pointer}.actions button.gold{background:#E5A823;color:#111}.actions button:active{transform:translateY(1px)}
+#status{position:fixed;z-index:10;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(16,18,20,.82);color:#fff;border-radius:999px;padding:8px 13px;font-size:12px;pointer-events:none}
+#help{position:fixed;right:15px;bottom:15px;z-index:10;background:rgba(255,255,255,.9);border-radius:12px;padding:8px 11px;font-size:12px;color:#4d5358;box-shadow:0 6px 20px rgba(0,0,0,.1)}
 </style>
 </head>
 <body>
-<div id="info"><b>Esfera de Mérito</b><span>Renault Master L2H2 · 3D interativo</span></div>
-<div id="help">Arrasta para rodar · Pinça para zoom</div>
+<div id="panel"><b>Esfera de Mérito</b><small>Renault Master L2H2 · referência de decoração OP.02 · modelo 3D interativo</small><div class="actions"><button class="gold" id="reset">Vista inicial</button><button id="export">Exportar GLB</button></div></div>
+<div id="help">Arrasta · pinça para zoom · roda o rato</div><div id="status">A carregar modelo…</div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+import {GLTFExporter} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/exporters/GLTFExporter.js';
 
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0xf0f2f4);
-scene.add(new THREE.HemisphereLight(0xffffff,0x5f6872,2.4));
-const key=new THREE.DirectionalLight(0xffffff,3.2);key.position.set(5,9,7);scene.add(key);
-const rim=new THREE.DirectionalLight(0xffffff,1.5);rim.position.set(-6,5,-8);scene.add(rim);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0xe9ecef);
+scene.fog=new THREE.Fog(0xe9ecef,18,40);
+scene.add(new THREE.HemisphereLight(0xffffff,0x596068,2.1));
+const key=new THREE.DirectionalLight(0xffffff,4.0);key.position.set(-6,10,8);scene.add(key);
+const fill=new THREE.DirectionalLight(0xffffff,1.6);fill.position.set(8,5,-8);scene.add(fill);
+const rim=new THREE.DirectionalLight(0xffffff,1.7);rim.position.set(-8,4,-10);scene.add(rim);
 
-const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.1,100);
-camera.position.set(8,4.5,10);
+const camera=new THREE.PerspectiveCamera(34,innerWidth/innerHeight,.05,100);camera.position.set(-8.7,4.3,8.5);
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.target.set(0,1.25,0);controls.minDistance=5;controls.maxDistance=18;controls.maxPolarAngle=Math.PI*.49;
+const root=new THREE.Group();root.name='Esfera de Mérito — Renault Master L2H2 2023';scene.add(root);
 
-const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
-renderer.outputColorSpace=THREE.SRGBColorSpace;document.body.appendChild(renderer.domElement);
+const mat=(color,rough=.6,metal=0)=>new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});
+const white=mat(0xf4f4f1,.33,.05), black=mat(0x111315,.72,0), dark=mat(0x172027,.18,.05), tyre=mat(0x080909,.92,0), steel=mat(0x73777b,.32,.65), gold=mat(0xE5A823,.38,.25), clear=mat(0xeaf5ff,.08,.1);clear.transparent=true;clear.opacity=.75;
 
-const controls=new OrbitControls(camera,renderer.domElement);
-controls.enableDamping=true;controls.target.set(0,1.55,0);controls.minDistance=5;controls.maxDistance=18;
-controls.maxPolarAngle=Math.PI*.48;controls.minPolarAngle=.65;
+function box(name,s,p,m,bev=.08){const g=new THREE.Group();g.name=name;const mesh=new THREE.Mesh(new THREE.BoxGeometry(...s),m);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);g.position.set(...p);root.add(g);return g}
+function cyl(name,r,d,p,m,rot=[Math.PI/2,0,0]){const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d,48),m);mesh.name=name;mesh.rotation.set(...rot);mesh.position.set(...p);mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);return mesh}
 
-const van=new THREE.Group();scene.add(van);
-const white=new THREE.MeshStandardMaterial({color:0xf7f7f5,roughness:.58,metalness:.02});
-const black=new THREE.MeshStandardMaterial({color:0x111214,roughness:.82});
-const dark=new THREE.MeshStandardMaterial({color:0x25282b,roughness:.65});
-const glass=new THREE.MeshPhysicalMaterial({color:0x172126,roughness:.16,metalness:.08,transmission:.05});
-const gold=new THREE.MeshStandardMaterial({color:0xE5A823,roughness:.34,metalness:.25});
+box('Cargo body',(4.15,2.03,1.70),(0.52,0,1.47),white,.16);
+box('Front cab shell',(1.20,1.86,1.62),(-2.18,0,1.42),white,.15);
+box('Roof crown',(4.65,1.72,.38),(-.05,0,2.42),white,.14);
+box('Front bonnet/windshield transition',(.55,1.82,.78),(-2.72,0,1.83),white,.18);
+box('Front bumper',(.22,1.88,.30),(-2.93,0,.72),black,.08);box('Rear bumper',(.20,1.88,.30),(2.87,0,.70),black,.06);
+for(const y of [-1.05,1.05]) box('Black side moulding',(4.55,.075,.17),(0.25,y,.82),black,.04);
+for(const y of [-1.075,1.075]) box('Slider door rail',(2.25,.035,.035),(.65,y,1.62),black,.01);
 
-function box(w,h,d,mat,x,y,z,bevel=0.08){
- const g=new THREE.BoxGeometry(w,h,d,1,1,1);
- const m=new THREE.Mesh(g,mat);m.position.set(x,y,z);van.add(m);return m;
+for(const y of [-1.055,1.055]){box('Sliding door seam',(.025,.02,1.36),(.55,y,1.50),black,.005);box('Cab door seam',(.022,.02,1.28),(-1.18,y,1.48),black,.005);box('Handle',(.28,.055,.07),(-1.18,y,1.78),black,.025);}
+box('Rear center seam',(.025,.025,1.72),(2.89,0,1.50),black,.005);
+for(const y of [-.57,.57]) box('Rear door handle',(.24,.08,.08),(2.91,y,1.55),black,.02);
+
+for(const y of [-1.015,1.015]){
+  box('Front side window',(.92,.035,.72),(-2.18,y,1.88),dark,.08);
+  box('Rear side glass',(.78,.035,.42),(-1.45,y,1.92),dark,.05);
 }
-function cyl(r,depth,mat,x,y,z,rot=[Math.PI/2,0,0]){
- const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,depth,32),mat);m.position.set(x,y,z);m.rotation.set(...rot);van.add(m);return m;
-}
+box('Front windshield',(.035,1.48,.62),(-2.77,0,2.03),dark,.06);
+for(const y of [-.49,.49]) box('Rear door window',(.035,.72,.66),(2.91,y,1.96),dark,.05);
 
-// Main L2H2 body, simplified high-detail presentation geometry
-box(5.7,2.75,2.25,white,0,2.05,0);
-box(1.55,2.55,2.23,white,-2.65,2.05,0);
-box(3.95,.22,2.30,black,.15,.75,0);
-box(5.25,.16,.18,black,0,.78,1.13);
-box(5.25,.16,.18,black,0,.78,-1.13);
-box(.24,1.65,2.30,black,2.82,1.35,0);
-box(.12,2.1,2.28,black,-2.88,1.45,0);
+for(const y of [-.62,.62]){box('Headlight',(.06,.34,.24),(-2.99,y,1.74),clear,.05);box('Tail light',(.07,.25,.72),(2.99,y,1.42),mat(0x7b1714,.25,.05),.04)}
+for(const y of [-1.16,1.16]) box('Side mirror',(.24,.14,.22),(-2.55,y,1.93),black,.06);
 
-// roof crown / cab transition
-box(1.9,.42,2.22,white,-2.25,3.63,0);
-box(1.72,1.0,2.24,white,-2.48,3.15,0);
-box(1.45,.9,2.25,white,-2.66,2.95,0);
-
-// windshield and side windows
-box(.07,.95,1.78,glass,-3.05,3.02,0);
-box(.08,.78,.82,glass,-2.92,3.0,.71);
-box(.08,.78,.82,glass,-2.92,3.0,-.71);
-
-// front grille/lights
-box(.08,.55,1.25,dark,-3.08,1.55,0);
-box(.08,.25,.5,white,-3.13,2.0,.72);
-box(.08,.25,.5,white,-3.13,2.0,-.72);
-box(.08,.13,.9,black,-3.14,1.33,0);
-
-// mirrors
-box(.28,.35,.22,black,-2.25,2.65,1.28);
-box(.28,.35,.22,black,-2.25,2.65,-1.28);
-
-// wheels
-for(const x of [-1.85,1.85]) for(const z of [-1.18,1.18]){
- cyl(.58,.28,black,x,.78,z,[Math.PI/2,0,0]);
- cyl(.29,.30,dark,x,.78,z,[Math.PI/2,0,0]);
- cyl(.13,.32,gold,x,.78,z,[Math.PI/2,0,0]);
+for(const x of [-2.02,2.03])for(const y of [-1.04,1.04]){
+  cyl('Tyre',.44,.25,[x,y,.48],tyre);
+  cyl('Steel wheel',.285,.265,[x,y,.48],steel);
+  cyl('Hub',.105,.275,[x,y,.48],black);
 }
 
-// rear twin doors
-box(.98,2.45,.035,white,2.72,2.05,.59);
-box(.98,2.45,.035,white,2.72,2.05,-.59);
-box(.055,1.7,.045,black,2.18,1.92,.59);
-box(.055,1.7,.045,black,2.18,1.92,-.59);
+function decalTexture(side=true){const c=document.createElement('canvas');c.width=2048;c.height=1024;const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
+  function logo(px,py,s){x.save();x.lineWidth=26;x.lineCap='round';x.strokeStyle='#15120f';x.beginPath();x.moveTo(px,py+s*.06);x.lineTo(px+s*.30,py);x.lineTo(px+s*.30,py+s*.18);x.lineTo(px+s*.08,py+s*.36);x.lineTo(px+s*.30,py+s*.56);x.lineTo(px+s*.62,py+s*.20);x.stroke();x.strokeStyle='#E5A823';x.beginPath();x.moveTo(px+s*.30,py+s*.18);x.lineTo(px+s*.62,py+s*.20);x.lineTo(px+s*.43,py+s*.43);x.stroke();x.restore();}
+  logo(side?170:300,180,300);x.fillStyle='#151515';x.font='700 58px Arial';x.fillText('Esfera de Mérito',side?160:295,555);
+  const services=['Construção civil','Remodelação / Restauro','Pinturas exterior / Interior','Serviços gerais'];x.font='500 46px Arial';let yy=245;for(const s of services){x.fillStyle='#E5A823';x.beginPath();x.arc(side?1060:1200,yy-12,10,0,Math.PI*2);x.fill();x.fillStyle='#171717';x.fillText(s,side?1090:1230,yy);yy+=86;}
+  x.font='500 34px Arial';const contacts=['+351 939 410 853','esferademerito@gmail.com','esferademerito.com','@esferademerito'];yy=760;for(const s of contacts){x.fillStyle='#171717';x.fillText(s,side?1080:1240,yy);yy+=48;}
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;}
+const sideTex=decalTexture(true), rearTex=decalTexture(false);
+function decal(name,p,s,texture,rot=[0,0,0]){const m=new THREE.Mesh(new THREE.PlaneGeometry(...s),new THREE.MeshStandardMaterial({map:texture,transparent:true,roughness:.58,metalness:0,depthWrite:false,side:THREE.DoubleSide}));m.name=name;m.position.set(...p);m.rotation.set(...rot);m.castShadow=false;root.add(m);return m}
+decal('Livery left',[.28,-1.063,1.62],[3.7,1.86],sideTex,[Math.PI/2,0,0]);decal('Livery right',[.28,1.063,1.62],[3.7,1.86],sideTex,[-Math.PI/2,0,Math.PI]);
+decal('Livery rear',[2.996,0,1.63],[2.15,1.78],rearTex,[0,Math.PI/2,0]);
 
-// handles + slider rail
-box(.25,.08,.08,black,.72,2.3,1.16);
-box(.25,.08,.08,black,.72,2.3,-1.16);
-box(2.0,.055,.055,black,.75,2.55,1.17);
-box(2.0,.055,.055,black,.75,2.55,-1.17);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0xdfe3e6,roughness:.82}));ground.rotation.x=-Math.PI/2;ground.position.y=.03;ground.receiveShadow=true;scene.add(ground);
 
-// Canvas decal textures
-function decal(lines,side){
- const c=document.createElement('canvas');c.width=1024;c.height=512;
- const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
- x.font='bold 58px Arial';x.fillStyle='#111';x.textAlign=side==='right'?'right':'left';
- let px=side==='right'?970:54, y=75;
- x.fillText('ESFERA DE MÉRITO',px,y);y+=62;
- x.fillStyle='#E5A823';x.fillRect(side==='right'?650:54,y-42,280,5);
- x.fillStyle='#111';x.font='bold 34px Arial';
- for(const t of lines){y+=45;x.fillText(t,px,y)}
- x.font='bold 30px Arial';y=390;x.fillText('+351 939 410 853',px,y);
- x.font='26px Arial';y+=35;x.fillText('esferademerito@gmail.com',px,y);
- y+=34;x.fillText('esferademerito.com',px,y);y+=34;x.fillText('@esferademerito',px,y);
- const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;return tex;
-}
-const sideTex=decal(['Construção civil','Remodelação / Restauro','Pinturas exterior / Interior','Serviços gerais'],'right');
-const sideMat=new THREE.MeshBasicMaterial({map:sideTex,transparent:true});
-const sidePlane=new THREE.Mesh(new THREE.PlaneGeometry(2.25,1.12),sideMat);
-sidePlane.position.set(.35,2.25,1.145);sidePlane.rotation.y=0;van.add(sidePlane);
-const sidePlane2=sidePlane.clone();sidePlane2.position.z=-1.145;sidePlane2.rotation.y=Math.PI;van.add(sidePlane2);
-
-const rearTex=decal(['• Construção civil','• Remodelação / Restauro','• Pinturas exterior / Interior','• Serviços gerais'],'left');
-const rearMat=new THREE.MeshBasicMaterial({map:rearTex,transparent:true});
-const rearPlane=new THREE.Mesh(new THREE.PlaneGeometry(1.65,.95),rearMat);
-rearPlane.position.set(2.705,2.2,.61);rearPlane.rotation.y=Math.PI/2;van.add(rearPlane);
-const rearPlane2=rearPlane.clone();rearPlane2.position.z=-.61;rearPlane2.rotation.y=-Math.PI/2;van.add(rearPlane2);
-
-// ES badge on front/rear
-function badge(){
- const c=document.createElement('canvas');c.width=512;c.height=512;const x=c.getContext('2d');
- x.clearRect(0,0,512,512);x.textAlign='center';x.font='bold 220px Arial';
- x.fillStyle='#111';x.fillText('E',190,280);x.fillStyle='#E5A823';x.fillText('S',320,280);
- const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
- return new THREE.Mesh(new THREE.PlaneGeometry(.8,.8),new THREE.MeshBasicMaterial({map:t,transparent:true}));
-}
-const b1=badge();b1.position.set(2.75,3.25,.63);b1.rotation.y=Math.PI/2;van.add(b1);
-const b2=b1.clone();b2.position.z=-.63;b2.rotation.y=-Math.PI/2;van.add(b2);
-
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshStandardMaterial({color:0xdfe3e7,roughness:1}));
-ground.rotation.x=-Math.PI/2;ground.position.y=.18;scene.add(ground);
-
+function frame(){requestAnimationFrame(frame);controls.update();renderer.render(scene,camera)} frame();
 window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();
-</script>
-</body></html>
+document.getElementById('reset').onclick=()=>{camera.position.set(-8.7,4.3,8.5);controls.target.set(0,1.25,0)};
+document.getElementById('export').onclick=()=>{document.getElementById('status').textContent='A preparar GLB…';const ex=new GLTFExporter();ex.parse(root,(g)=>{const blob=new Blob([g],{type:'model/gltf-binary'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='esfera-de-merito-renault-master-l2h2.glb';a.click();URL.revokeObjectURL(a.href);document.getElementById('status').textContent='GLB exportado';setTimeout(()=>document.getElementById('status').textContent='Pronto',1600)},{binary:true,trs:false,onlyVisible:true});};
+document.getElementById('status').textContent='Modelo pronto';setTimeout(()=>document.getElementById('status').textContent='Pronto',1200);
+</script></body></html>
